@@ -1,0 +1,20 @@
+language: generic
+
+branches:
+  only:
+  - master
+
+deploy:
+  provider: s3
+  access_key_id:
+    secure: GAVjF740vDun/HxtgVL4qg640BSF2zx4EvaA0x8q27QXLTBEQGkdEyU9O8CXunD3vr149EPCbveAY6/SBqI935WwRBdXjurwapmOmlx/pzMTK9ZAzWMx9pyAaN3M19lyhaxaHBFDz9NjuiUn/bsdct1+luim3keFqE+EIfvqRijtp92rEByGxBm+pBmoGIWYDn1OWkLOVXMPv1VI65+jOhxt3FNBKc0gVMQKyg7TmKzSeQb55hY34RWVk9rgK88qRwhK2z0qb6K5BcHJ/fZABukrz8wWlz8f/oPkA7/Jzu2/4JH+tuzQzarfOjauLVJ65b9fJjBTG26cmlaA9X9Y1aKM0qM6vPbCHEJqW8YtLRq9y9uSnOEDFWm3Uz48Dzd/P+5PYQRZJOvO2ijwsunSMjfUvpjFPVN7Uwrxf3HzVtmMhiEZ+HQyZgB8NqnFNtiVoAI+Erpm7XvkCsAkr+LSakdrkHVR11qovwG8n3KbvzRfFSAlLxei4Rl9wzXhDqw8bNtVBRh0XQBbgnFUYPT/AiT6Yrhv/L0z8MCwMdAJwzyuaHeYY1sGQtDiYJfho7fWrxotYqvZKlVQl7qSJrxg+/cmR2QwZJfPWtenKFOR7xRdMgM2p7/jtCNLRQ+XVGkoAJNRrCqBp+hDr1T//VhC7Xvt1o2kr3ohZNtBRmVGkF0=
+  secret_access_key:
+    secure: UcdXik9HxR/uxQCnEd+/GpqOJ8JvzUk8hHtTJleYdOpvus4EG5bajuHP8co/u+D972EAP7FTxMtZqxlQBTT+WMdgWleh/CostkYSAC3pxuSnntB917lOK/krDmDqDIUKp+BOGbXcvkCT+sTajWh2D6e94lXdJng+rmhqdxqmvVErD+KKdDy0onTmVMhAXmM0yTrpiFzOMONY51pz2wmo4Cd7k0XO0FyIAip+S52y91Ao5u1t3Wynk5jEnQwzMLmLfQQfjIk/t7pvqDg8F26BGLa5wfrz34sk/LkQy55nVwCCXBSOsBAKJg2TeoPS1Ml8Gc6HWNpk6guT+PCfm1r2gajaPjuCqTpC1Y1AgiNSoD8PBjd2wksjhXgLDeOa+zucbKW2QsA5w3a0su2h43EkxyyRmbrm1KubMvdA2Khh6hc3FXsG3cFwIM1uRKe3DRlokF6mL1lUjNe3gcUKrGSeU6QDgeeJ8s27A85p1DQvPiD1wv8gWujUrtMO+jUhWWX3lPjNcp4ojdRGfFlijpcVVJ0aXD1F2zYrg+R2RD1myCxW0iCopCn75ppG9JcB8iAPas3PzBpLmXhsH4Z2Q3ECpa+//WkEVD9dijaWVMDMH+Fbib/aqtKmF2o7HsPMALIxZNtntiDAdDq4v8AC0g8qd75aY6L1Tlgly/pWxeGI8Ls=
+  bucket: andrewmacheret.com
+  skip_cleanup: true
+  acl: public_read
+  region: us-east-1
+  default_text_charset: utf-8
+  detect_encoding: true
+  local_dir: www
+  upload_dir: projects/goalie
