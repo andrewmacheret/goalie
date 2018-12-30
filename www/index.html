@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Goalie</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css"
+      integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS"
+      crossorigin="anonymous">
+  </head>
+  <body>
+    <div id="control" class="container mb-1">
+      <div class="row">
+        <div id="title" class="col">
+          <span style="line-height: 1.62; font-size: 1.5rem;">
+            <img src="goalie.png" class="img-fluid" style="width: 1.62rem; height: 1.62rem; vertical-align: text-bottom;" alt="🥅">
+            Goalie
+          </span>
+        </div>
+        <div id="auth" class="col">
+          <span class="float-right">
+            <button id="authorize-button" type="button" class="btn btn-success" style="display: none;">Authorize</button>
+            <button id="signout-button" type="button" class="btn btn-outline-danger" style="display: none;">Sign Out</button>
+            <a id="spreadsheet-link" href="#" target="_blank" style="display: inline-block;">
+              <img src="sheets.png" class="img-fluid" style="width: 1.62rem; height: 1.62rem;" alt="📝">
+            </a>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div id="message-wrapper" class="container">
+      <div id="message" class="alert alert-success" role="alert"></div>
+    </div>
+
+    <div id="form-wrapper" class="container">
+      <form id="goalie-form" name="goalie-form" action="#" onsubmit="submitForm(); return false;" style="display: none;">
+        <div class="form-group">
+          <fieldset class="form-group">
+            <div>
+              <label class="font-weight-bold">Date</label>
+            </div>
+            <input type="date" class="form-control form-control-lg" id="date" name="date" value="" placeholder="mm/dd/yyyy" onkeypress="return dontSubmit(event)" />
+          </fieldset>
+
+          <div id="dynamic-fields"></div>
+
+          <div id="dynamic-fields-templates" style="display: none;">
+            <template id="template-radio" style="display: none;">
+              <fieldset class="form-group">
+                <div>
+                  <label class="font-weight-bold">{{FIELD_LABEL}}</label>
+                </div>
+                <div id="{{CLASS}}-choices" class="btn-group btn-group-toggle" data-toggle="buttons">
+                </div>
+              </fieldset>
+            </template>
+            <template id="template-radio-choice" style="display: none;">
+              <label class="btn btn-outline-secondary btn-lg {{BUTTON_ACTIVE}}">
+                <input type="radio" id="{{CLASS}}-{{INDEX}}" name="{{CLASS}}" value="{{VALUE}}" />
+                {{LABEL}}
+              </label>
+            </template>
+
+            <template id="template-checkbox" style="display: none;">
+              <fieldset class="form-group">
+                <div>
+                  <label class="font-weight-bold">{{FIELD_LABEL}}</label>
+                </div>
+                <div id="{{CLASS}}-choices" class="btn-group btn-group-toggle" data-toggle="buttons">
+                </div>
+              </fieldset>
+            </template>
+            <template id="template-checkbox-choice" style="display: none;">
+              <label class="btn btn-outline-secondary btn-lg {{BUTTON_ACTIVE}}">
+                <input type="checkbox" id="{{CLASS}}-{{INDEX}}" name="{{CLASS}}" value="{{VALUE}}" />
+                {{LABEL}}
+              </label>
+            </template>
+
+            <template id="template-text" style="display: none;">
+              <fieldset class="form-group">
+                <div>
+                  <label class="font-weight-bold">{{FIELD_LABEL}}</label>
+                </div>
+                <input type="text" class="form-control form-control-lg" id="{{CLASS}}" name="{{CLASS}}" value="" placeholder="..." onkeypress="return dontSubmit(event)" />
+              </fieldset>
+            </template>
+
+            <template id="template-decimal" style="display: none;">
+              <fieldset class="form-group">
+                <div>
+                  <label class="font-weight-bold">{{FIELD_LABEL}}</label>
+                </div>
+                <input type="number" step="0.1" class="form-control form-control-lg" id="{{CLASS}}" name="{{CLASS}}" value="" placeholder="0" onkeypress="return dontSubmit(event)" />
+              </fieldset>
+            </template>
+          </div>
+
+          <div id="message-below" class="alert alert-success" role="alert"></div>
+
+          <fieldset class="form-group">
+            <button id="submit" class="btn btn-block btn-lg btn-primary" type="submit">Submit</button>
+          </fieldset>
+        </div>
+      </form>
+    </div>
+
+    <script
+      src="index.js"></script>
+
+    <script
+      async defer
+      src="https://apis.google.com/js/api.js"
+      onload="this.onload=function(){};handleClientLoad()"
+      onreadystatechange="if (this.readyState === 'complete') this.onload()">
+    </script>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+      integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+      crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js"
+      integrity="sha384-wHAiFfRlMFy6i5SRaxvfOCifBUQy1xHdJ/yoi7FRNXMRBu5WHdZYu1hA6ZOblgut"
+      crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js"
+      integrity="sha384-B0UglyR+jN6CkvvICOB2joaf5I4l3gm9GU6Hc1og6Ls7i6U/mkkaduKaBhlAXv9k"
+      crossorigin="anonymous"></script>
+  </body>
+</html>
