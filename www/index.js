@@ -223,7 +223,14 @@ function dontSubmit(event) {
 
 function loadField(name, type, values) {
   const className = escapeClassName(name);
-  console.log(className, name, type, values);
+  //console.log(className, name, type, values);
+  const variablesToReplace = {
+    'CLASS': className,
+    'FIELD_LABEL': escapeHTML(name)
+  };
+  if (type.startsWith('decimal')) {
+    variablesToReplace['DECIMAL_STEP'] = Math.pow(10, -precision(type));
+  }
   const html = {
     main: $id(`template-${type}`).innerHTML
             .replace(/\{\{CLASS\}\}/g, className)
@@ -320,6 +327,11 @@ function validate({date, customValues}) {
   return true;
 }
 
+function precision(decimalType) {
+  const typeParts = x.split('-', 2);
+  return typeParts.length > 1 ? typeParts[1] : 2;
+}
+
 function submitForm() {
   try {
     setMessage('info', `Saving...`);
@@ -329,8 +341,9 @@ function submitForm() {
     const customValues = [];
     for (const question of settings.questions) {
       let customValue;
-      if (question.type === 'decimal') {
-        customValue = parseInt(form[question.className].value, 10) || 0;
+      if (question.type.startsWith('decimal')) {
+        const precision = precision(question.type);
+        customValue = parseFloat(form[question.className].value).toFixed(precision) || 0;
       } else if (question.type === 'checkbox') {
         customValue = [].slice.call(form[question.className]).filter(e => e.checked).map(e => e.value).join(', ');
       } else {
@@ -351,7 +364,7 @@ function submitForm() {
 
     appendSpreadsheetRow(`'${dataSheet}'!A${startingRow}:${endingColumn}`, row)
     .then(updates => {
-      console.log(updates);
+      //console.log(updates);
       setSubmitEnabled(true);
       setMessage('success', `Saved <a href="${spreadsheetLink}" target="_blank" class="alert-link">${updates.updatedRange}</a>`);
 
