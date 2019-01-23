@@ -224,18 +224,13 @@ function dontSubmit(event) {
 function loadField(name, type, values) {
   const className = escapeClassName(name);
   //console.log(className, name, type, values);
-  const variablesToReplace = {
-    'CLASS': className,
-    'FIELD_LABEL': escapeHTML(name)
-  };
+  let mainHtml = $id(`template-${type}`).innerHTML
+      .replace(/\{\{CLASS\}\}/g, className)
+      .replace(/\{\{FIELD_LABEL\}\}/g, escapeHTML(name));
   if (type.startsWith('decimal')) {
-    variablesToReplace['DECIMAL_STEP'] = Math.pow(10, -precision(type));
+    mainHtml = mainHtml.replace(/\{\{DECIMAL_STEP\}\}/, Math.pow(10, -decimalPrecision(type)));
   }
-  const html = {
-    main: $id(`template-${type}`).innerHTML
-            .replace(/\{\{CLASS\}\}/g, className)
-            .replace(/\{\{FIELD_LABEL\}\}/g, escapeHTML(name))
-  };
+  const html = { main: mainHtml };
 
   if (type === 'radio' || type === 'checkbox') {
     let choicesHtml = '';
@@ -327,8 +322,8 @@ function validate({date, customValues}) {
   return true;
 }
 
-function precision(decimalType) {
-  const typeParts = x.split('-', 2);
+function decimalPrecision(decimalType) {
+  const typeParts = decimalType.split('-', 2);
   return typeParts.length > 1 ? typeParts[1] : 2;
 }
 
@@ -342,7 +337,7 @@ function submitForm() {
     for (const question of settings.questions) {
       let customValue;
       if (question.type.startsWith('decimal')) {
-        const precision = precision(question.type);
+        const precision = decimalPrecision(question.type);
         customValue = parseFloat(form[question.className].value).toFixed(precision) || 0;
       } else if (question.type === 'checkbox') {
         customValue = [].slice.call(form[question.className]).filter(e => e.checked).map(e => e.value).join(', ');
