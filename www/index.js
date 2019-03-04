@@ -338,7 +338,7 @@ function submitForm() {
       let customValue;
       if (question.type.startsWith('decimal')) {
         const precision = decimalPrecision(question.type);
-        customValue = parseFloat(form[question.className].value).toFixed(precision) || 0;
+        customValue = parseFloat(form[question.className].value || 0).toFixed(precision);
       } else if (question.type === 'checkbox') {
         customValue = [].slice.call(form[question.className]).filter(e => e.checked).map(e => e.value).join(', ');
       } else {
