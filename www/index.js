@@ -19,8 +19,12 @@ const spreadsheetId = '1lKPFQXbZsQDzUD5eVrmzDee50dBdB9c0WuBKXLZ6Rfk';
 const spreadsheetLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
 
 const search = new URLSearchParams(window.location.search);
+let today = new Date();
+const year = Number(search.get('year')) || today.getFullYear();
+const month = Number(search.get('month')) || today.getMonth()+1;
+const day = Number(search.get('day')) || today.getDay();
+today = new Date(year, month-1, day)
 
-const year = Math.max(2019, search.get('year') || new Date().getFullYear());
 const dataSheet = `${year} Goals`;
 const settingsSheet = `${year} Settings`;
 const startingRow = 4;
@@ -33,10 +37,7 @@ let settings = {
 }
 let submittingForm = false;
 
-function removeTime(date) {
-  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-}
-$id('date').valueAsDate = removeTime(new Date());
+$id('date').valueAsDate = today;
 $id('spreadsheet-link').href = spreadsheetLink;
 
 setMessage('info', 'Loading Google APIs...');
