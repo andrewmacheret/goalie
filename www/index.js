@@ -17,7 +17,10 @@ const $id = document.getElementById.bind(document);
 
 const spreadsheetId = '1lKPFQXbZsQDzUD5eVrmzDee50dBdB9c0WuBKXLZ6Rfk';
 const spreadsheetLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
-const year = Math.max(2019, new Date().getFullYear());
+
+const search = new URLSearchParams(window.location.search);
+
+const year = Math.max(2019, search.get('year') || new Date().getFullYear());
 const dataSheet = `${year} Goals`;
 const settingsSheet = `${year} Settings`;
 const startingRow = 4;
