@@ -35,8 +35,8 @@ const spreadsheetIds = {
 const spreadsheetId = spreadsheetIds[user][String(year)];
 const spreadsheetLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
 
-const dataSheet = `${year} Goals`;
-const settingsSheet = `${year} Settings`;
+const dataSheet = 'Goals';
+const settingsSheet = 'Settings';
 const startingRow = 4;
 
 const settingsVersion = 1;
