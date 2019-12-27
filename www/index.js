@@ -15,15 +15,25 @@ const form = document.forms[formName];
 
 const $id = document.getElementById.bind(document);
 
-const spreadsheetId = '1lKPFQXbZsQDzUD5eVrmzDee50dBdB9c0WuBKXLZ6Rfk';
-const spreadsheetLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
-
 const search = new URLSearchParams(window.location.search);
 let today = new Date();
 const year = Number(search.get('year')) || today.getFullYear();
 const month = Number(search.get('month')) || today.getMonth()+1;
 const day = Number(search.get('day')) || today.getDay();
 today = new Date(year, month-1, day)
+
+const user = search.get('user') || 'melly';
+const spreadsheetIds = {
+  'melly': {
+    '2019': '1lKPFQXbZsQDzUD5eVrmzDee50dBdB9c0WuBKXLZ6Rfk',
+    '2020': '1Cagj1km1yjr16F-d6QfcoXUmQ5Uu9zg-ye64ygNLnss'
+  },
+  'andy': {
+    '2020': '1uSn-tZ7FUQ7hrO6RMNWE1VDBjov3B27RhRmyT2cYfPU'
+  }
+};
+const spreadsheetId = spreadsheetIds[user][String(year)];
+const spreadsheetLink = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
 
 const dataSheet = `${year} Goals`;
 const settingsSheet = `${year} Settings`;
