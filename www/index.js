@@ -19,7 +19,7 @@ const search = new URLSearchParams(window.location.search);
 let today = new Date();
 const year = Number(search.get('year')) || today.getFullYear();
 const month = Number(search.get('month')) || today.getMonth()+1;
-const day = Number(search.get('day')) || today.getDay();
+const day = Number(search.get('day')) || today.getDate();
 today = new Date(year, month-1, day)
 
 const user = search.get('user') || 'melly';
