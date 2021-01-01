@@ -160,7 +160,7 @@ function getSpreadsheetValues(range) {
   return new Promise((resolve, reject) => {
     gapi.client.sheets.spreadsheets.get({
       spreadsheetId,
-      range,
+      ranges: [range],
       includeGridData: true
     }).then(response => {
       resolve(response.result.sheets[0].data[0]);
