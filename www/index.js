@@ -40,7 +40,7 @@ const dataSheet = 'Input';
 const settingsSheet = 'Settings';
 const startingRow = 4;
 
-const settingsVersion = 1;
+const settingsVersion = 2;
 let settings = {
   settingsVersion,
   lastRowNum: 0,
@@ -158,11 +158,12 @@ function setMessage(level, message) {
 
 function getSpreadsheetValues(range) {
   return new Promise((resolve, reject) => {
-    gapi.client.sheets.spreadsheets.values.get({
+    gapi.client.sheets.spreadsheets.get({
       spreadsheetId,
-      range
+      range,
+      includeGridData: true
     }).then(response => {
-      resolve(response.result.values);
+      resolve(response.result.sheets[0].data[0]);
     }, response => {
       reject(response.result.error.message);
     });
@@ -208,9 +209,9 @@ function loadSheetsCached() {
 function loadSheets() {
   setMessage('info', 'Loading sheets...');
 
-  getSpreadsheetValues(`'${settingsSheet}'!A1:Z`) // TODO - confirm
+  getSpreadsheetValues(`'${settingsSheet}'!A1:AZ100`)
   .then(data => {
-    if (data.length === 0) {
+    if (!data) {
       setMessage('danger', 'No data found.');
       return;
     }
@@ -236,7 +237,7 @@ function dontSubmit(event) {
   return true;
 }
 
-function loadField(name, type, values) {
+function loadField(name, type, values, colors) {
   const className = escapeClassName(name);
   //console.log(className, name, type, values);
   let mainHtml = $id(`template-${type}`).innerHTML
@@ -251,11 +252,13 @@ function loadField(name, type, values) {
     let choicesHtml = '';
     for (let i=0; i<values.length; i++) {
       const value = escapeHTML(values[i]);
+      const color = colors[i];
       choicesHtml += $id(`template-${type}-choice`).innerHTML
         .replace(/\{\{CLASS\}\}/g, className)
         .replace(/\{\{INDEX\}\}/g, ''+i)
         .replace(/\{\{VALUE\}\}/g, value)
         .replace(/\{\{LABEL\}\}/g, value)
+        .replace(/\{\{COLOR\}\}/g, color)
         .replace(/\{\{BUTTON_ACTIVE\}\}/g, i === 0 && type === 'radio' ? 'active' : ''); // TODO
     }
     html.choices = choicesHtml;
@@ -266,11 +269,16 @@ function loadField(name, type, values) {
     className,
     type,
     values,
+    colors,
     html
   };
 }
 
-function loadSettings(values) {
+function loadSettings(data) {
+  
+  const values = data.rowData.map(y => y.values.map(z => z.formattedValue));
+  const colors = data.rowData.map(y => y.values.map(z =>
+                 z && z.effectiveFormat && z.effectiveFormat.textFormat && z.effectiveFormat.textFormat.foregroundColor || {}));
 
   // values
   settings.lastRowNum = parseInt(values[2][0], 10) || 4;
@@ -282,13 +290,17 @@ function loadSettings(values) {
     const fieldType = (values[2][c] || '').trim().toLowerCase();
     if (fieldName !== '' && fieldType !== '') {
       const fieldValues = [];
+      const fieldColors = [];
       for (let r = 3; r < values.length; r++) {
         const fieldValue = (values[r][c] || '').trim();
         if (fieldValue !== '') {
           fieldValues.push(fieldValue);
+          const color = colors[r][c];
+          const rgb = '#' + ['red', 'green', 'blue'].map(k => Math.round((color[k] || 0) * 255).toString(16)).join('');
+          fieldColors.push(color);
         }
       }
-      settings.questions.push(loadField(fieldName, fieldType, fieldValues));
+      settings.questions.push(loadField(fieldName, fieldType, fieldValues, fieldColors));
     }
   }
 
