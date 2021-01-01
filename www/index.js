@@ -296,7 +296,8 @@ function loadSettings(data) {
         if (fieldValue !== '') {
           fieldValues.push(fieldValue);
           const color = colors[r][c];
-          const colorString = '#' + ['red', 'green', 'blue'].map(k => Math.round((color[k] || 0) * 255).toString(16)).join('');
+          const colorString = '#' + ['red', 'green', 'blue'].map(k =>
+                              Math.round((color[k] || 0) * 255).toString(16).padStart(2, '0')).join('');
           fieldColors.push(colorString);
         }
       }
