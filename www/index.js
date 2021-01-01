@@ -296,8 +296,8 @@ function loadSettings(data) {
         if (fieldValue !== '') {
           fieldValues.push(fieldValue);
           const color = colors[r][c];
-          const rgb = '#' + ['red', 'green', 'blue'].map(k => Math.round((color[k] || 0) * 255).toString(16)).join('');
-          fieldColors.push(color);
+          const colorString = '#' + ['red', 'green', 'blue'].map(k => Math.round((color[k] || 0) * 255).toString(16)).join('');
+          fieldColors.push(colorString);
         }
       }
       settings.questions.push(loadField(fieldName, fieldType, fieldValues, fieldColors));
