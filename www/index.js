@@ -28,6 +28,7 @@ const spreadsheetIds = {
     '2019': '1lKPFQXbZsQDzUD5eVrmzDee50dBdB9c0WuBKXLZ6Rfk',
     '2020': '1Cagj1km1yjr16F-d6QfcoXUmQ5Uu9zg-ye64ygNLnss',
     '2021': '135RnxCsDr15fZzovg0gTTVcGjtwVef21hJEbhEIFph4',
+    '2024': '1tSCOT4C-aCY5UI76cHDMugxqG8470VqWKZi9JCA6AQ8',
   },
   'andy': {
     '2020': '1uSn-tZ7FUQ7hrO6RMNWE1VDBjov3B27RhRmyT2cYfPU',
