@@ -32,6 +32,7 @@ const spreadsheetIds = {
   },
   'andy': {
     '2020': '1uSn-tZ7FUQ7hrO6RMNWE1VDBjov3B27RhRmyT2cYfPU',
+    '2024': '19ykMC6r-0yx9C1BaHE5WoE_MyLrAn2eLy1SvnCYRN8o',
   }
 };
 const spreadsheetId = spreadsheetIds[user][String(year)];
