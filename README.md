@@ -6,4 +6,4 @@ A daily goal tracker that reads and writes a Google Sheet with the Sheets API.
 
 See it running at [https://andrewmacheret.com/projects/goalie](https://andrewmacheret.com/projects/goalie).
 
-Goalie and [Miler Lite](https://github.com/andrewmacheret/miler-lite) share this [privacy policy](PRIVACY.md) and these [terms of service](TERMS.md).
+Goalie and [Miler Lite](https://github.com/andrewmacheret/miler-lite) share this [privacy policy](https://andrewmacheret.com/projects/goalie/privacy.html) and these [terms of service](https://andrewmacheret.com/projects/goalie/terms.html), from `www/privacy.html` and `www/terms.html`.
