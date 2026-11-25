@@ -246,13 +246,31 @@ textarea::placeholder {
   resize: vertical;
 }
 
+/* touch-action: none stops a drag on the handle from scrolling the page */
 .drag-handle {
-  padding: 0 0.25rem;
+  padding: 0.25rem 0.4rem;
+  border: 0;
+  border-radius: 8px;
+  background: none;
   color: var(--muted);
+  font-family: inherit;
   font-size: 1.25rem;
   cursor: grab;
   user-select: none;
+  -webkit-user-select: none;
   touch-action: none;
+}
+
+.dragging {
+  position: relative;
+  z-index: 1;
+  box-shadow: var(--shadow);
+  opacity: 0.9;
+}
+
+.dragging .drag-handle {
+  color: var(--accent);
+  cursor: grabbing;
 }
 
 .add-question {

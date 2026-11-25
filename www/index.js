@@ -39,8 +39,6 @@ let accessToken = loadSavedToken();
 let signedOut = false;
 // The editor only opens on settings freshly loaded from this spreadsheet
 let loadedSheetId = null;
-let draggingQuestion = null;
-
 // Older versions kept settings for every sheet under one key
 window.localStorage.removeItem('settings');
 
@@ -55,8 +53,6 @@ $id('remove-dialog').querySelector('form').onsubmit = handleRemoveChoice;
 $id('editor-add').onclick = () => addEditorQuestion(null, null);
 $id('editor-save').onclick = handleEditorSave;
 $id('editor-cancel').onclick = displaySettings;
-$id('editor-questions').ondragover = handleEditorDragOver;
-$id('editor-questions').ondrop = event => event.preventDefault();
 renderSheetControls();
 loadSheetsCached();
 
@@ -519,29 +515,62 @@ function addEditorQuestion(question, index) {
   typeSelect.onchange = () => choices.style.display = isChoiceType(typeSelect.value) ? '' : 'none';
   item.querySelector('.q-remove').onclick = () => item.remove();
 
-  // Only the handle starts a drag, so text in the boxes can still be selected
-  item.querySelector('.drag-handle').onpointerdown = () => item.draggable = true;
-  item.ondragstart = event => {
-    draggingQuestion = item;
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('text/plain', '');
-  };
-  item.ondragend = () => {
-    item.draggable = false;
-    draggingQuestion = null;
-  };
+  makeDraggable(item, item.querySelector('.drag-handle'));
 
   $id('editor-questions').appendChild(item);
   if (!question) item.querySelector('.q-name').focus();
 }
 
-function handleEditorDragOver(event) {
-  if (!draggingQuestion) return;
-  event.preventDefault();
-  const list = $id('editor-questions');
-  const next = [...list.children].find(item => item !== draggingQuestion &&
-    event.clientY < item.getBoundingClientRect().top + item.offsetHeight / 2);
-  list.insertBefore(draggingQuestion, next || null);
+// Drag by the handle to reorder. Pointer events work for both mouse and touch,
+// where the browser's own drag and drop doesn't work on phones
+function makeDraggable(item, handle) {
+  handle.onpointerdown = event => {
+    event.preventDefault();
+    item.classList.add('dragging');
+    const move = event => {
+      moveItem(item, event.clientY);
+      // Scroll when dragging near the top or bottom of the screen
+      if (event.clientY < 60) window.scrollBy(0, -10);
+      if (event.clientY > window.innerHeight - 60) window.scrollBy(0, 10);
+    };
+    const stop = event => {
+      if (event.type === 'pointerup') moveItem(item, event.clientY);
+      item.classList.remove('dragging');
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', stop);
+      window.removeEventListener('pointercancel', stop);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
+  };
+  // The browser's own drag would swallow the pointer moves
+  handle.ondragstart = event => event.preventDefault();
+  // The arrow keys move it too. Moving the neighbors keeps the handle focused
+  handle.onkeydown = event => {
+    const prev = item.previousElementSibling;
+    const next = item.nextElementSibling;
+    if (event.key === 'ArrowUp' && prev) item.after(prev);
+    else if (event.key === 'ArrowDown' && next) item.before(next);
+    else return;
+    event.preventDefault();
+  };
+}
+
+// Moves the neighbors around the dragged item rather than the item itself,
+// since moving it would cancel the drag on some phones
+function moveItem(item, y) {
+  const middle = other => other.getBoundingClientRect().top + other.offsetHeight / 2;
+  let prev = item.previousElementSibling;
+  while (prev && y < middle(prev)) {
+    item.after(prev);
+    prev = item.previousElementSibling;
+  }
+  let next = item.nextElementSibling;
+  while (next && y > middle(next)) {
+    item.before(next);
+    next = item.nextElementSibling;
+  }
 }
 
 async function handleEditorSave() {
