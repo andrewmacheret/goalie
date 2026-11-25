@@ -121,9 +121,15 @@ function handleSheetSelect(event) {
   const sheet = sheetList.recent.find(sheet => sheet.id === event.target.value);
   if (!sheet) return;
   rememberSheet(sheet.id, sheet.name);
-  form.style.display = 'none';
+  hideSheet();
   loadSheetsCached();
   if (accessToken) loadSheets();
+}
+
+// Hides the form and the editor while another spreadsheet loads
+function hideSheet() {
+  form.style.display = 'none';
+  $id('editor').style.display = 'none';
 }
 
 // Asks whether to just take the spreadsheet off the list, or trash it too
@@ -150,8 +156,7 @@ function removeCurrentSheet(doneMessage) {
   sheetList.current = sheetList.recent.length ? sheetList.recent[0].id : null;
   window.localStorage.setItem(sheetsKey, JSON.stringify(sheetList));
   renderSheetControls();
-  form.style.display = 'none';
-  $id('editor').style.display = 'none';
+  hideSheet();
   loadSheetsCached();
   if (accessToken && currentSheetId()) {
     loadSheets(doneMessage);
@@ -296,7 +301,7 @@ function handlePicked(data) {
   if (data[google.picker.Response.ACTION] !== google.picker.Action.PICKED) return;
   const doc = data[google.picker.Response.DOCUMENTS][0];
   rememberSheet(doc[google.picker.Document.ID], doc[google.picker.Document.NAME]);
-  form.style.display = 'none';
+  hideSheet();
   loadSheetsCached();
   loadSheets();
 }
