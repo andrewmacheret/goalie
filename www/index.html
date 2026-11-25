@@ -41,6 +41,7 @@
         <div id="sheet-buttons" class="btn-group flex-shrink-0" style="display: none;">
           <button id="pick-button" type="button" class="btn btn-outline-secondary" title="Choose a spreadsheet from Google Drive">Open</button>
           <button id="create-button" type="button" class="btn btn-outline-secondary" title="Create a new Goalie spreadsheet">New</button>
+          <button id="edit-button" type="button" class="btn btn-outline-secondary" title="Edit this spreadsheet's questions">Edit</button>
         </div>
       </div>
     </div>
@@ -120,6 +121,25 @@
           </fieldset>
         </div>
       </form>
+
+      <div id="editor" style="display: none;">
+        <div id="editor-questions"></div>
+        <button id="editor-add" type="button" class="btn btn-outline-primary btn-block mb-3">Add question</button>
+        <div class="d-flex mb-3">
+          <button id="editor-save" type="button" class="btn btn-primary btn-lg flex-fill mr-2">Save</button>
+          <button id="editor-cancel" type="button" class="btn btn-outline-secondary btn-lg">Cancel</button>
+        </div>
+      </div>
+
+      <template id="template-editor-question">
+        <div class="d-flex align-items-center mb-1">
+          <span class="drag-handle mr-2 text-muted" title="Drag to reorder" style="cursor: grab; font-size: 1.25rem; user-select: none;">☰</span>
+          <input type="text" class="form-control mr-2 q-name" placeholder="Question" aria-label="Question">
+          <select class="custom-select mr-2 q-type" style="width: auto;" aria-label="Type"></select>
+          <button type="button" class="btn btn-outline-danger q-remove">Remove</button>
+        </div>
+        <textarea class="form-control q-choices" rows="3" placeholder="One choice per line" aria-label="Choices"></textarea>
+      </template>
     </div>
 
     <footer class="container mb-3 text-center small">

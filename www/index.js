@@ -35,6 +35,9 @@ let tokenClient;
 const tokenKey = 'daily-tracking-token';
 let accessToken = loadSavedToken();
 let signedOut = false;
+// The editor only opens on settings freshly loaded from this spreadsheet
+let loadedSheetId = null;
+let draggingQuestion = null;
 
 // Older versions kept settings for every sheet under one key
 window.localStorage.removeItem('settings');
@@ -46,6 +49,11 @@ $id('date').valueAsDate = removeTime(new Date());
 
 setMessage('info', 'Loading Google sign-in...');
 $id('remove-button').onclick = handleRemoveClick;
+$id('editor-add').onclick = () => addEditorQuestion(null, null);
+$id('editor-save').onclick = handleEditorSave;
+$id('editor-cancel').onclick = displaySettings;
+$id('editor-questions').ondragover = handleEditorDragOver;
+$id('editor-questions').ondrop = event => event.preventDefault();
 renderSheetControls();
 loadSheetsCached();
 
@@ -145,6 +153,7 @@ function handleClientLoad() {
   $id('sheet-select').onchange = handleSheetSelect;
   $id('pick-button').onclick = handlePickClick;
   $id('create-button').onclick = handleCreateClick;
+  $id('edit-button').onclick = handleEditClick;
   updateSigninStatus(!!accessToken);
 }
 
@@ -293,12 +302,16 @@ function starterSpreadsheet() {
       starterTab(dataSheet, [
         ['Goalie adds a row here each time you submit.'],
         [],
-        ['Date', `=ARRAYFORMULA('${settingsSheet}'!C2:2)`],
+        // Column A never moves, and INDIRECT keeps the range fixed when the
+        // editor inserts, moves or deletes question columns
+        [`={"Date", INDIRECT("'${settingsSheet}'!C2:AZ2")}`],
       ]),
       starterTab(settingsSheet, [
         ['Questions go in row 2 from column C, their type in row 3 (radio, checkbox, text, decimal, or decimal-1 for one decimal place), and their choices from row 4 down. The font color of a choice shows in Goalie.'],
         ['Next row', null, 'Exercised', 'Meals', 'Glasses of water', 'Notes'],
-        [`=COUNTA('${dataSheet}'!A${startingRow}:A)+${startingRow}`, null, 'radio', 'checkbox', 'decimal-0', 'text'],
+        // Submit inserts rows at the top of the range, which would shift a plain
+        // A4:A reference down and miss the first answer. INDIRECT stays put
+        [`=COUNTA(INDIRECT("'${dataSheet}'!A${startingRow}:A"))+${startingRow}`, null, 'radio', 'checkbox', 'decimal-0', 'text'],
         [null, null, ['Yes', green], 'Breakfast'],
         [null, null, ['No', red], 'Lunch'],
         [null, null, null, 'Dinner'],
@@ -392,6 +405,7 @@ function loadSheets() {
     }
 
     loadSettings(data);
+    loadedSheetId = currentSheetId();
 
     setMessage('success', 'Loaded!');
   }).catch(error => {
@@ -405,6 +419,191 @@ function loadSheets() {
       setMessage('danger', 'Error: ' + error);
     }
   })
+}
+
+// The types the editor offers. Plain decimal means two decimal places
+const questionTypes = {
+  'radio': 'Pick one',
+  'checkbox': 'Pick any',
+  'text': 'Text',
+  'decimal-0': 'Whole number',
+  'decimal-1': 'Number, 1 decimal',
+  'decimal': 'Number, 2 decimals',
+};
+
+function isChoiceType(type) {
+  return type === 'radio' || type === 'checkbox';
+}
+
+function handleEditClick() {
+  if (!loadedSheetId || loadedSheetId !== currentSheetId()) {
+    setMessage('warning', 'Wait for the spreadsheet to load, then click Edit.');
+    return;
+  }
+  $id('editor-questions').innerHTML = '';
+  settings.questions.forEach((question, index) => addEditorQuestion(question, index));
+  form.style.display = 'none';
+  $id('editor').style.display = '';
+  setMessage('info', 'Rename, drag to reorder, add or remove questions, then click Save.');
+}
+
+// index is the question's position in the spreadsheet, or null for a new one
+function addEditorQuestion(question, index) {
+  const item = document.createElement('div');
+  item.className = 'border rounded p-2 mb-2 bg-white';
+  item.dataset.index = index === null ? '' : index;
+  item.innerHTML = $id('template-editor-question').innerHTML;
+
+  const type = question ? question.type : 'radio';
+  const typeSelect = item.querySelector('.q-type');
+  const types = {...questionTypes};
+  if (!types[type]) types[type] = type;
+  for (const [value, label] of Object.entries(types)) {
+    typeSelect.add(new Option(label, value, false, value === type));
+  }
+  const choices = item.querySelector('.q-choices');
+  item.querySelector('.q-name').value = question ? question.name : '';
+  choices.value = question ? question.values.join('\n') : '';
+  choices.style.display = isChoiceType(type) ? '' : 'none';
+  typeSelect.onchange = () => choices.style.display = isChoiceType(typeSelect.value) ? '' : 'none';
+  item.querySelector('.q-remove').onclick = () => item.remove();
+
+  // Only the handle starts a drag, so text in the boxes can still be selected
+  item.querySelector('.drag-handle').onmousedown = () => item.draggable = true;
+  item.ondragstart = event => {
+    draggingQuestion = item;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', '');
+  };
+  item.ondragend = () => {
+    item.draggable = false;
+    draggingQuestion = null;
+  };
+
+  $id('editor-questions').appendChild(item);
+  if (!question) item.querySelector('.q-name').focus();
+}
+
+function handleEditorDragOver(event) {
+  if (!draggingQuestion) return;
+  event.preventDefault();
+  const list = $id('editor-questions');
+  const next = [...list.children].find(item => item !== draggingQuestion &&
+    event.clientY < item.getBoundingClientRect().top + item.offsetHeight / 2);
+  list.insertBefore(draggingQuestion, next || null);
+}
+
+async function handleEditorSave() {
+  const edited = [...$id('editor-questions').children].map(item => ({
+    index: item.dataset.index === '' ? null : Number(item.dataset.index),
+    name: item.querySelector('.q-name').value.trim(),
+    type: item.querySelector('.q-type').value,
+    choices: item.querySelector('.q-choices').value.split('\n').map(choice => choice.trim()).filter(Boolean),
+  }));
+
+  // The form already has fields named date and submit
+  const classNames = new Set(['date', 'submit']);
+  for (const question of edited) {
+    const name = escapeHTML(question.name);
+    if (!question.name) return setMessage('warning', 'Every question needs a name.');
+    if (classNames.has(escapeClassName(question.name))) return setMessage('warning', `"${name}" is already used. Pick another name.`);
+    if (isChoiceType(question.type) && !question.choices.length) return setMessage('warning', `"${name}" needs at least one choice.`);
+    classNames.add(escapeClassName(question.name));
+  }
+
+  const old = settings.questions;
+  const kept = new Set(edited.map(question => question.index).filter(index => index !== null));
+  const removed = old.map((question, index) => index).filter(index => !kept.has(index));
+
+  // Look for saved answers directly, since a sheet's Next row formula may be off
+  let hasAnswers;
+  try {
+    const range = encodeURIComponent(`'${dataSheet}'!A${startingRow}:A`);
+    const answers = await sheetsFetch(`/${currentSheetId()}/values/${range}`);
+    hasAnswers = !!(answers.values && answers.values.length);
+  } catch (error) {
+    console.error(error);
+    return setMessage('danger', 'Error: ' + error);
+  }
+
+  if (hasAnswers) {
+    const warnings = [];
+    for (const index of removed) {
+      warnings.push(`Removing "${old[index].name}" deletes all of its saved answers.`);
+    }
+    for (const question of edited) {
+      if (question.index !== null && old[question.index].type !== question.type) {
+        warnings.push(`"${question.name}" changes type. Its saved answers stay as they are.`);
+      }
+    }
+    if (warnings.length && !window.confirm(warnings.join('\n\n') + '\n\nSave anyway?')) return;
+  }
+
+  $id('editor-save').disabled = true;
+  setMessage('info', 'Saving questions...');
+  try {
+    const sheetIds = await sheetsFetch(`/${currentSheetId()}?fields=sheets.properties(sheetId,title)`);
+    const sheetIdOf = title => sheetIds.sheets.find(sheet => sheet.properties.title === title).properties.sheetId;
+    await sheetsFetch(`/${currentSheetId()}:batchUpdate`, {
+      method: 'POST',
+      body: JSON.stringify({requests: editorRequests(edited, removed, sheetIdOf(settingsSheet), sheetIdOf(dataSheet))}),
+    });
+    loadSheets();
+  } catch (error) {
+    console.error(error);
+    setMessage('danger', 'Error: ' + error);
+  } finally {
+    $id('editor-save').disabled = false;
+  }
+}
+
+// Questions are columns from C in Settings, and their answers are columns
+// from B in Input. Each change to a question's column happens in both tabs,
+// so saved answers stay lined up with their questions
+function editorRequests(edited, removed, settingsId, inputId) {
+  const requests = [];
+  const firstColumns = [[settingsId, 2], [inputId, 1]];
+  const column = (sheetId, index) => ({sheetId, dimension: 'COLUMNS', startIndex: index, endIndex: index + 1});
+
+  // Right to left, so the earlier column numbers stay the same
+  for (const index of [...removed].reverse()) {
+    for (const [sheetId, first] of firstColumns) {
+      requests.push({deleteDimension: {range: column(sheetId, first + index)}});
+    }
+  }
+
+  // Put each question in place from left to right, inserting new ones
+  const order = settings.questions.map((question, index) => index).filter(index => !removed.includes(index));
+  edited.forEach((question, target) => {
+    if (question.index === null) {
+      for (const [sheetId, first] of firstColumns) {
+        requests.push({insertDimension: {range: column(sheetId, first + target), inheritFromBefore: false}});
+      }
+      order.splice(target, 0, null);
+      return;
+    }
+    const from = order.indexOf(question.index);
+    if (from === target) return;
+    for (const [sheetId, first] of firstColumns) {
+      requests.push({moveDimension: {source: column(sheetId, first + from), destinationIndex: first + target}});
+    }
+    order.splice(from, 1);
+    order.splice(target, 0, question.index);
+  });
+
+  // Then write names, types and choices, clearing any old choices below.
+  // Only values change, so choice colors stay put
+  const rowCount = Math.max(settings.settingsRows || 0, 3 + Math.max(0, ...edited.map(question => question.choices.length))) - 1;
+  const rows = [];
+  for (let row = 0; row < rowCount; row++) {
+    rows.push({values: edited.map(question => {
+      const text = row === 0 ? question.name : row === 1 ? question.type
+        : isChoiceType(question.type) ? question.choices[row - 2] : undefined;
+      return text === undefined ? {} : {userEnteredValue: {stringValue: text}};
+    })});
+  }
+  requests.push({updateCells: {start: {sheetId: settingsId, rowIndex: 1, columnIndex: 2}, rows, fields: 'userEnteredValue'}});
+  return requests;
 }
 
 function dontSubmit(event) {
@@ -468,6 +667,7 @@ function loadSettings(data) {
 
   // values
   settings.lastRowNum = parseInt(values[2][0], 10) || 4;
+  settings.settingsRows = values.length;
 
   // custom fields
   settings.questions = []
@@ -512,6 +712,7 @@ function displaySettings() {
     }
   }
 
+  $id('editor').style.display = 'none';
   form.style.display = '';
 }
 
