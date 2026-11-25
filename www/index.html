@@ -1,176 +1,159 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
+    <meta charset="utf-8">
+    <meta name="color-scheme" content="light dark">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0b0d0c" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
     <title>Goalie</title>
     <script async src="https://andrewmacheret.com/analytics.js"></script>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="description" content="Goalie logs your daily goals to your own Google spreadsheet, one row a day.">
     <link rel="canonical" href="https://andrewmacheret.com/projects/goalie/">
-    <link rel="stylesheet"
-      href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css"
-      integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS"
-      crossorigin="anonymous">
-    <style type="text/css">
-      .btn-outline-secondary:not(:disabled):not(.disabled):hover { background-color: #ddd; color: #333; }
-      .btn-outline-secondary:not(:disabled):not(.disabled).active:hover { background-color: #333; color: #fff; } 
-    </style>
+    <link rel="icon" href="goalie.png">
+    <link rel="stylesheet" href="https://andrewmacheret.com/projects.css">
+    <link rel="stylesheet" href="index.css">
   </head>
   <body>
-    <div id="control" class="container mb-1">
-      <div class="row">
-        <div id="title" class="col">
-          <span style="line-height: 1.62; font-size: 1.5rem;">
-            <img src="goalie.png" class="img-fluid" style="width: 1.62rem; height: 1.62rem; vertical-align: text-bottom;" alt="🥅">
-            Goalie
-          </span>
-        </div>
-        <div id="auth" class="col">
-          <span class="float-right">
-            <button id="authorize-button" type="button" class="btn btn-success" style="display: none;">Authorize</button>
-            <button id="signout-button" type="button" class="btn btn-outline-danger" style="display: none;">Sign Out</button>
-            <a id="spreadsheet-link" href="#" target="_blank" style="display: inline-block;">
-              <img src="sheets.png" class="img-fluid" style="width: 1.62rem; height: 1.62rem;" alt="📝">
+    <main class="app">
+      <header class="header">
+        <div>
+          <div class="title-row">
+            <a class="home" href="https://andrewmacheret.com/">
+              <img src="https://andrewmacheret.com/favicon.svg" alt="andrewmacheret.com" width="20" height="20">
             </a>
+            <span class="slash" aria-hidden="true">/</span>
+            <h1><img class="app-icon" src="goalie.png" alt="">Goalie</h1>
+          </div>
+          <p>Log your daily goals to your own Google spreadsheet.</p>
+        </div>
+        <div class="account">
+          <button id="authorize-button" type="button" class="control small primary" style="display: none;">Authorize</button>
+          <button id="signout-button" type="button" class="control small" style="display: none;">Sign Out</button>
+          <a id="spreadsheet-link" href="#" target="_blank" class="control round" style="display: none;" title="Open the spreadsheet in Google Sheets">
+            <img src="sheets.png" alt="Open the spreadsheet in Google Sheets">
+          </a>
+        </div>
+      </header>
+
+      <div id="sheet-controls" class="toolbar">
+        <select id="sheet-select" class="select" style="display: none;" aria-label="Spreadsheet"></select>
+        <div class="toolbar-buttons">
+          <button id="remove-button" type="button" class="control small danger" style="display: none;" title="Remove this spreadsheet from the list">Remove</button>
+          <span id="sheet-buttons" style="display: none;">
+            <button id="pick-button" type="button" class="control small" title="Choose a spreadsheet from Google Drive">Open</button>
+            <button id="create-button" type="button" class="control small" title="Create a new Goalie spreadsheet">New</button>
+            <button id="edit-button" type="button" class="control small" title="Edit this spreadsheet's questions">Edit</button>
           </span>
         </div>
       </div>
-    </div>
 
-    <div id="sheet-controls" class="container mb-2">
-      <div class="d-flex">
-        <select id="sheet-select" class="custom-select mr-2" style="display: none;" aria-label="Spreadsheet"></select>
-        <button id="remove-button" type="button" class="btn btn-outline-danger mr-2 flex-shrink-0" style="display: none;" title="Remove this spreadsheet from the list. It stays in your Google Drive">Remove</button>
-        <div id="sheet-buttons" class="btn-group flex-shrink-0" style="display: none;">
-          <button id="pick-button" type="button" class="btn btn-outline-secondary" title="Choose a spreadsheet from Google Drive">Open</button>
-          <button id="create-button" type="button" class="btn btn-outline-secondary" title="Create a new Goalie spreadsheet">New</button>
-          <button id="edit-button" type="button" class="btn btn-outline-secondary" title="Edit this spreadsheet's questions">Edit</button>
+      <div id="message" class="message" role="status"></div>
+
+      <form id="goalie-form" name="goalie-form" class="stage" action="#" onsubmit="submitForm(); return false;" style="display: none;">
+        <div class="field">
+          <label class="field-label" for="date">Date</label>
+          <input type="date" id="date" name="date" value="" onkeypress="return dontSubmit(event)">
         </div>
-      </div>
-    </div>
 
-    <div id="message-wrapper" class="container">
-      <div id="message" class="alert alert-success" role="alert"></div>
-    </div>
+        <div id="dynamic-fields"></div>
 
-    <div id="form-wrapper" class="container">
-      <form id="goalie-form" name="goalie-form" action="#" onsubmit="submitForm(); return false;" style="display: none;">
-        <div class="form-group">
-          <fieldset class="form-group">
-            <div>
-              <label class="font-weight-bold">Date</label>
-            </div>
-            <input type="date" class="form-control form-control-lg" id="date" name="date" value="" placeholder="mm/dd/yyyy" onkeypress="return dontSubmit(event)" />
+        <template id="template-radio">
+          <fieldset class="field">
+            <legend>{{FIELD_LABEL}}</legend>
+            <div id="{{CLASS}}-choices" class="choices"></div>
           </fieldset>
+        </template>
+        <template id="template-radio-choice">
+          <label class="control choice">
+            <input type="radio" id="{{CLASS}}-{{INDEX}}" name="{{CLASS}}" value="{{VALUE}}">
+            {{DOT}}{{LABEL}}
+          </label>
+        </template>
 
-          <div id="dynamic-fields"></div>
+        <template id="template-checkbox">
+          <fieldset class="field">
+            <legend>{{FIELD_LABEL}}</legend>
+            <div id="{{CLASS}}-choices" class="choices"></div>
+          </fieldset>
+        </template>
+        <template id="template-checkbox-choice">
+          <label class="control choice">
+            <input type="checkbox" id="{{CLASS}}-{{INDEX}}" name="{{CLASS}}" value="{{VALUE}}">
+            {{DOT}}{{LABEL}}
+          </label>
+        </template>
 
-          <div id="dynamic-fields-templates" style="display: none;">
-            <template id="template-radio" style="display: none;">
-              <fieldset class="form-group">
-                <div>
-                  <label class="font-weight-bold">{{FIELD_LABEL}}</label>
-                </div>
-                <div id="{{CLASS}}-choices" class="btn-group btn-group-toggle flex-wrap" data-toggle="buttons">
-                </div>
-              </fieldset>
-            </template>
-            <template id="template-radio-choice" style="display: none;">
-              <label class="btn btn-outline-secondary btn-lg {{BUTTON_ACTIVE}}" style="color: {{COLOR}}">
-                <input type="radio" id="{{CLASS}}-{{INDEX}}" name="{{CLASS}}" value="{{VALUE}}" />
-                {{LABEL}}
-              </label>
-            </template>
-
-            <template id="template-checkbox" style="display: none;">
-              <fieldset class="form-group">
-                <div>
-                  <label class="font-weight-bold">{{FIELD_LABEL}}</label>
-                </div>
-                <div id="{{CLASS}}-choices" class="btn-group btn-group-toggle flex-wrap" data-toggle="buttons">
-                </div>
-              </fieldset>
-            </template>
-            <template id="template-checkbox-choice" style="display: none;">
-              <label class="btn btn-outline-secondary btn-lg {{BUTTON_ACTIVE}}" style="color: {{COLOR}}">
-                <input type="checkbox" id="{{CLASS}}-{{INDEX}}" name="{{CLASS}}" value="{{VALUE}}" />
-                {{LABEL}}
-              </label>
-            </template>
-
-            <template id="template-text" style="display: none;">
-              <fieldset class="form-group">
-                <div>
-                  <label class="font-weight-bold">{{FIELD_LABEL}}</label>
-                </div>
-                <input type="text" autocomplete="off" class="form-control form-control-lg" id="{{CLASS}}" name="{{CLASS}}" value="" placeholder="..." onkeypress="return dontSubmit(event)" />
-              </fieldset>
-            </template>
-
-            <template id="template-decimal" style="display: none;">
-              <fieldset class="form-group">
-                <div>
-                  <label class="font-weight-bold">{{FIELD_LABEL}}</label>
-                </div>
-                <input type="number" step="{{DECIMAL_STEP}}" class="form-control form-control-lg" id="{{CLASS}}" name="{{CLASS}}" value="" placeholder="0" onkeypress="return dontSubmit(event)" />
-              </fieldset>
-            </template>
+        <template id="template-text">
+          <div class="field">
+            <label class="field-label" for="{{CLASS}}">{{FIELD_LABEL}}</label>
+            <input type="text" autocomplete="off" id="{{CLASS}}" name="{{CLASS}}" value="" placeholder="..." onkeypress="return dontSubmit(event)">
           </div>
+        </template>
 
-          <div id="message-below" class="alert alert-success" role="alert"></div>
+        <template id="template-decimal">
+          <div class="field">
+            <label class="field-label" for="{{CLASS}}">{{FIELD_LABEL}}</label>
+            <input type="number" inputmode="decimal" step="{{DECIMAL_STEP}}" id="{{CLASS}}" name="{{CLASS}}" value="" placeholder="0" onkeypress="return dontSubmit(event)">
+          </div>
+        </template>
 
-          <fieldset class="form-group">
-            <button id="submit" class="btn btn-block btn-lg btn-primary" type="submit">Submit</button>
-          </fieldset>
-        </div>
+        <button id="submit" class="control primary submit" type="submit">Submit</button>
+        <div id="message-below" class="message" role="status"></div>
       </form>
 
-      <div id="editor" style="display: none;">
-        <label for="editor-title" class="font-weight-bold">Spreadsheet name</label>
-        <input id="editor-title" type="text" class="form-control mb-3">
+      <div id="editor" class="stage" style="display: none;">
+        <div class="field">
+          <label class="field-label" for="editor-title">Spreadsheet name</label>
+          <input id="editor-title" type="text" autocomplete="off">
+        </div>
+        <div class="field-label">Questions</div>
         <div id="editor-questions"></div>
-        <button id="editor-add" type="button" class="btn btn-outline-primary btn-block mb-3">Add question</button>
-        <div class="d-flex mb-3">
-          <button id="editor-save" type="button" class="btn btn-primary btn-lg flex-fill mr-2">Save</button>
-          <button id="editor-cancel" type="button" class="btn btn-outline-secondary btn-lg">Cancel</button>
+        <button id="editor-add" type="button" class="control small add-question">Add question</button>
+        <div class="editor-actions">
+          <button id="editor-save" type="button" class="control primary">Save</button>
+          <button id="editor-cancel" type="button" class="control">Cancel</button>
         </div>
       </div>
 
       <template id="template-editor-question">
-        <div class="d-flex align-items-center mb-1">
-          <span class="drag-handle mr-2 text-muted" title="Drag to reorder" style="cursor: grab; font-size: 1.25rem; user-select: none;">☰</span>
-          <input type="text" class="form-control mr-2 q-name" placeholder="Question" aria-label="Question">
-          <select class="custom-select mr-2 q-type" style="width: auto;" aria-label="Type"></select>
-          <button type="button" class="btn btn-outline-danger q-remove">Remove</button>
+        <div class="question-row">
+          <span class="drag-handle" title="Drag to reorder" aria-hidden="true">☰</span>
+          <input type="text" class="q-name" placeholder="Question" aria-label="Question">
+          <select class="select q-type" aria-label="Type"></select>
+          <button type="button" class="control small danger q-remove">Remove</button>
         </div>
-        <textarea class="form-control q-choices" rows="3" placeholder="One choice per line" aria-label="Choices"></textarea>
+        <textarea class="q-choices" rows="3" placeholder="One choice per line" aria-label="Choices"></textarea>
       </template>
-    </div>
 
-    <footer class="container mb-3 text-center small">
-      <a href="about.html" class="text-muted">About</a> · <a href="privacy.html" class="text-muted">Privacy</a> · <a href="terms.html" class="text-muted">Terms</a>
-    </footer>
+      <dialog id="remove-dialog">
+        <form method="dialog">
+          <h2>Remove "<span id="remove-name"></span>"?</h2>
+          <p>Take it off this list, or also move it to your Google Drive trash. Google keeps trashed files for 30 days, so you can still restore it.</p>
+          <p id="remove-signin-note">Sign in first to move it to the trash.</p>
+          <div class="dialog-actions">
+            <button value="cancel" class="control small">Cancel</button>
+            <button value="list" class="control small">Remove from list</button>
+            <button value="trash" id="remove-trash" class="control small danger">Move to trash</button>
+          </div>
+        </form>
+      </dialog>
 
-    <script
-      src="index.js"></script>
+      <footer class="footer">
+        <a href="about.html">About</a>
+        <span aria-hidden="true">&middot;</span>
+        <a href="privacy.html">Privacy</a>
+        <span aria-hidden="true">&middot;</span>
+        <a href="terms.html">Terms</a>
+        <span aria-hidden="true">&middot;</span>
+        <a href="https://andrewmacheret.com/">More projects</a>
+        <span aria-hidden="true">&middot;</span>
+        <a href="https://github.com/andrewmacheret/goalie">Source</a>
+      </footer>
+    </main>
 
-    <script
-      async defer
-      src="https://accounts.google.com/gsi/client"
-      onload="handleClientLoad()"
-      onerror="handleClientLoadError()">
-    </script>
-
+    <script src="index.js"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="handleClientLoad()" onerror="handleClientLoadError()"></script>
     <script async defer src="https://apis.google.com/js/api.js"></script>
-
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
-      integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
-      crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js"
-      integrity="sha384-wHAiFfRlMFy6i5SRaxvfOCifBUQy1xHdJ/yoi7FRNXMRBu5WHdZYu1hA6ZOblgut"
-      crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js"
-      integrity="sha384-B0UglyR+jN6CkvvICOB2joaf5I4l3gm9GU6Hc1og6Ls7i6U/mkkaduKaBhlAXv9k"
-      crossorigin="anonymous"></script>
   </body>
 </html>

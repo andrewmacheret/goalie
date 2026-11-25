@@ -8,6 +8,7 @@ const PICKER_API_KEY = 'AIzaSyAxkzeJQJKcw5kZ_P-NXqG15scFqMIrf3A';
 // drive.file only reaches spreadsheets the user picks or Goalie creates
 const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 const SHEETS_API = 'https://sheets.googleapis.com/v4/spreadsheets';
+const DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
 
 const formName = 'goalie-form';
 const form = document.forms[formName];
@@ -23,7 +24,8 @@ const sheetsKey = 'goalie-sheets';
 const maxRecentSheets = 10;
 let sheetList = loadSheetList();
 
-const settingsVersion = 3;
+// Saved settings hold the form's HTML, so bump this when the templates change
+const settingsVersion = 4;
 let settings = {
   settingsVersion,
   lastRowNum: 0,
@@ -49,6 +51,7 @@ $id('date').valueAsDate = removeTime(new Date());
 
 setMessage('info', 'Loading Google sign-in...');
 $id('remove-button').onclick = handleRemoveClick;
+$id('remove-dialog').querySelector('form').onsubmit = handleRemoveChoice;
 $id('editor-add').onclick = () => addEditorQuestion(null, null);
 $id('editor-save').onclick = handleEditorSave;
 $id('editor-cancel').onclick = displaySettings;
@@ -114,7 +117,7 @@ function renderSheetControls() {
   $id('remove-button').style.display = currentSheetId() ? '' : 'none';
 
   const link = $id('spreadsheet-link');
-  link.style.display = currentSheetId() ? 'inline-block' : 'none';
+  link.style.display = currentSheetId() ? '' : 'none';
   link.href = spreadsheetLink();
 }
 
@@ -127,18 +130,52 @@ function handleSheetSelect(event) {
   if (accessToken) loadSheets();
 }
 
-// Takes the spreadsheet off this browser's list. It stays in Google Drive
+// Asks whether to just take the spreadsheet off the list, or trash it too
 function handleRemoveClick() {
-  const id = currentSheetId();
-  if (!id) return;
+  if (!currentSheetId()) return;
+  const dialog = $id('remove-dialog');
+  $id('remove-name').textContent = currentSheetName();
+  $id('remove-trash').hidden = !accessToken;
+  $id('remove-signin-note').hidden = !!accessToken;
+  dialog.showModal();
+}
+
+// Each dialog button closes it. Escape closes it without a submit
+function handleRemoveChoice(event) {
+  const choice = event.submitter && event.submitter.value;
+  if (choice === 'list') removeCurrentSheet();
+  if (choice === 'trash') trashCurrentSheet();
+}
+
+// Takes the spreadsheet off this browser's list and loads the next one
+function removeCurrentSheet(doneMessage) {
   window.localStorage.removeItem(settingsKey());
-  sheetList.recent = sheetList.recent.filter(sheet => sheet.id !== id);
+  sheetList.recent = sheetList.recent.filter(sheet => sheet.id !== currentSheetId());
   sheetList.current = sheetList.recent.length ? sheetList.recent[0].id : null;
   window.localStorage.setItem(sheetsKey, JSON.stringify(sheetList));
   renderSheetControls();
   form.style.display = 'none';
+  $id('editor').style.display = 'none';
   loadSheetsCached();
-  updateSigninStatus(!!accessToken);
+  if (accessToken && currentSheetId()) {
+    loadSheets(doneMessage);
+  } else {
+    updateSigninStatus(!!accessToken);
+    if (doneMessage) setMessage('success', doneMessage);
+  }
+}
+
+// Trashed files stay in Google Drive's trash for 30 days
+async function trashCurrentSheet() {
+  const name = currentSheetName();
+  setMessage('info', 'Moving the spreadsheet to the trash...');
+  try {
+    await googleFetch(`${DRIVE_API}/${currentSheetId()}`, {method: 'PATCH', body: JSON.stringify({trashed: true})});
+  } catch (error) {
+    console.error(error);
+    return setMessage('danger', 'Could not move it to the trash: ' + error);
+  }
+  removeCurrentSheet(`Moved "${escapeHTML(name)}" to your Google Drive trash.`);
 }
 
 
@@ -273,7 +310,12 @@ function handleCreateClick() {
   sheetsFetch('', {method: 'POST', body: JSON.stringify(starterSpreadsheet())})
   .then(result => {
     rememberSheet(result.spreadsheetId, result.properties.title);
-    loadSheets();
+    return loadSheets();
+  }).then(loaded => {
+    // Start in the editor so the example questions get replaced
+    if (!loaded) return;
+    handleEditClick();
+    setMessage('success', 'Created! Name the spreadsheet and change the example questions to your own, then click Save.');
   }).catch(error => {
     console.error(error);
     setMessage('danger', 'Error: ' + error);
@@ -332,22 +374,23 @@ function starterSpreadsheet() {
  * @param {string} message Text to be placed in pre element.
  */
 function setMessage(level, message) {
-  const messageElement = $id('message');
-  messageElement.innerHTML = message;
-  messageElement.className = 'alert alert-' + level;
-
-  const messageElement2 = $id('message-below');
-  messageElement2.innerHTML = message;
-  messageElement2.className = 'alert alert-' + level;
+  for (const id of ['message', 'message-below']) {
+    $id(id).innerHTML = message;
+    $id(id).className = 'message ' + level;
+  }
 
   console.log(level, message);
 }
 
-// Calls the Sheets API and rejects with the error message
-async function sheetsFetch(path, options = {}) {
+function sheetsFetch(path, options) {
+  return googleFetch(`${SHEETS_API}${path}`, options);
+}
+
+// Calls a Google API and rejects with the error message
+async function googleFetch(url, options = {}) {
   const headers = {...options.headers, Authorization: `Bearer ${accessToken}`};
   if (options.body) headers['Content-Type'] = 'application/json';
-  const response = await fetch(`${SHEETS_API}${path}`, {...options, headers});
+  const response = await fetch(url, {...options, headers});
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
     // Access tokens expire after an hour, so ask to sign in again
@@ -395,10 +438,11 @@ function loadSheetsCached() {
   }
 }
 
-function loadSheets() {
+// Resolves to true once the form is ready
+function loadSheets(doneMessage = 'Loaded!') {
   setMessage('info', 'Loading spreadsheet...');
 
-  getSpreadsheet(`'${settingsSheet}'!A1:AZ100`)
+  return getSpreadsheet(`'${settingsSheet}'!A1:AZ100`)
   .then(result => {
     // Keep the saved name up to date if the spreadsheet was renamed
     rememberSheet(currentSheetId(), result.properties.title);
@@ -406,13 +450,14 @@ function loadSheets() {
     const data = result.sheets[0].data[0];
     if (!data || !data.rowData) {
       setMessage('danger', 'The Settings tab is empty.');
-      return;
+      return false;
     }
 
     loadSettings(data);
     loadedSheetId = currentSheetId();
 
-    setMessage('success', 'Loaded!');
+    setMessage('success', doneMessage);
+    return true;
   }).catch(error => {
     console.error(error);
     if (String(error).includes('Unable to parse range')) {
@@ -456,7 +501,7 @@ function handleEditClick() {
 // index is the question's position in the spreadsheet, or null for a new one
 function addEditorQuestion(question, index) {
   const item = document.createElement('div');
-  item.className = 'border rounded p-2 mb-2 bg-white';
+  item.className = 'question';
   item.dataset.index = index === null ? '' : index;
   item.innerHTML = $id('template-editor-question').innerHTML;
 
@@ -475,7 +520,7 @@ function addEditorQuestion(question, index) {
   item.querySelector('.q-remove').onclick = () => item.remove();
 
   // Only the handle starts a drag, so text in the boxes can still be selected
-  item.querySelector('.drag-handle').onmousedown = () => item.draggable = true;
+  item.querySelector('.drag-handle').onpointerdown = () => item.draggable = true;
   item.ondragstart = event => {
     draggingQuestion = item;
     event.dataTransfer.effectAllowed = 'move';
@@ -648,14 +693,15 @@ function loadField(name, type, values, colors) {
     let choicesHtml = '';
     for (let i=0; i<values.length; i++) {
       const value = escapeHTML(values[i]);
+      // Black is the default font color, so only other colors get a dot
       const color = colors[i];
+      const dot = color && color !== '#000000' ? `<span class="dot" style="background: ${color}"></span>` : '';
       choicesHtml += $id(`template-${type}-choice`).innerHTML
         .replace(/\{\{CLASS\}\}/g, className)
         .replace(/\{\{INDEX\}\}/g, ''+i)
         .replace(/\{\{VALUE\}\}/g, value)
         .replace(/\{\{LABEL\}\}/g, value)
-        .replace(/\{\{COLOR\}\}/g, color)
-        .replace(/\{\{BUTTON_ACTIVE\}\}/g, i === 0 && type === 'radio' ? 'active' : ''); // TODO
+        .replace(/\{\{DOT\}\}/g, dot);
     }
     html.choices = choicesHtml;
   }
@@ -760,7 +806,8 @@ function submitForm() {
         const precision = decimalPrecision(question.type);
         customValue = parseFloat(form[question.className].value || 0).toFixed(precision);
       } else if (question.type === 'checkbox') {
-        customValue = [].slice.call(form[question.className]).filter(e => e.checked).map(e => e.value).join(', ');
+        // querySelectorAll, since form[name] isn't a list when there's only one choice
+        customValue = [...form.querySelectorAll(`input[name="${question.className}"]:checked`)].map(e => e.value).join(', ');
       } else {
         customValue = form[question.className].value.trim();
       }
@@ -781,7 +828,7 @@ function submitForm() {
     .then(updates => {
       //console.log(updates);
       setSubmitEnabled(true);
-      setMessage('success', `Saved <a href="${spreadsheetLink()}" target="_blank" class="alert-link">${updates.updatedRange}</a>`);
+      setMessage('success', `Saved <a href="${spreadsheetLink()}" target="_blank">${updates.updatedRange}</a>`);
 
       settings.lastRowNum += 1;
 
