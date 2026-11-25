@@ -89,6 +89,11 @@ function currentSheetId() {
   return sheetList.current;
 }
 
+function currentSheetName() {
+  const sheet = sheetList.recent.find(sheet => sheet.id === currentSheetId());
+  return sheet ? sheet.name : '';
+}
+
 function spreadsheetLink() {
   return `https://docs.google.com/spreadsheets/d/${currentSheetId()}/edit`;
 }
@@ -440,11 +445,12 @@ function handleEditClick() {
     setMessage('warning', 'Wait for the spreadsheet to load, then click Edit.');
     return;
   }
+  $id('editor-title').value = currentSheetName();
   $id('editor-questions').innerHTML = '';
   settings.questions.forEach((question, index) => addEditorQuestion(question, index));
   form.style.display = 'none';
   $id('editor').style.display = '';
-  setMessage('info', 'Rename, drag to reorder, add or remove questions, then click Save.');
+  setMessage('info', 'Rename the spreadsheet, or rename, drag to reorder, add or remove questions, then click Save.');
 }
 
 // index is the question's position in the spreadsheet, or null for a new one
@@ -500,6 +506,8 @@ async function handleEditorSave() {
     type: item.querySelector('.q-type').value,
     choices: item.querySelector('.q-choices').value.split('\n').map(choice => choice.trim()).filter(Boolean),
   }));
+  const title = $id('editor-title').value.trim();
+  if (!title) return setMessage('warning', 'The spreadsheet needs a name.');
 
   // The form already has fields named date and submit
   const classNames = new Set(['date', 'submit']);
@@ -543,10 +551,14 @@ async function handleEditorSave() {
   setMessage('info', 'Saving questions...');
   try {
     const sheetIds = await sheetsFetch(`/${currentSheetId()}?fields=sheets.properties(sheetId,title)`);
-    const sheetIdOf = title => sheetIds.sheets.find(sheet => sheet.properties.title === title).properties.sheetId;
+    const sheetIdOf = tab => sheetIds.sheets.find(sheet => sheet.properties.title === tab).properties.sheetId;
+    const requests = editorRequests(edited, removed, sheetIdOf(settingsSheet), sheetIdOf(dataSheet));
+    if (title !== currentSheetName()) {
+      requests.push({updateSpreadsheetProperties: {properties: {title}, fields: 'title'}});
+    }
     await sheetsFetch(`/${currentSheetId()}:batchUpdate`, {
       method: 'POST',
-      body: JSON.stringify({requests: editorRequests(edited, removed, sheetIdOf(settingsSheet), sheetIdOf(dataSheet))}),
+      body: JSON.stringify({requests}),
     });
     loadSheets();
   } catch (error) {
@@ -707,7 +719,7 @@ function displaySettings() {
     if (question.html.choices) {
       $id(`${question.className}-choices`).innerHTML = question.html.choices;
       if (question.type === 'radio') {
-        form[`${question.className}`][0].checked = true; // TODO
+        form.querySelector(`input[name="${question.className}"]`).checked = true; // TODO
       }
     }
   }
